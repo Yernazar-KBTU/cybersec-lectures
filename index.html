@@ -1493,32 +1493,48 @@ window.SECMAP={
     voice=v.find(x=>/google/i.test(x.name))||v.find(x=>/natural|online|neural/i.test(x.name))||v.find(x=>/milena|irina|svetlana|dariya|katya/i.test(x.name))||v[0]||null;
     document.querySelectorAll('.aud-msg').forEach(m=>m.textContent=voice?('Голос: '+voice.name):'Русский голос не найден на этом устройстве — установи русский голос в настройках системы или открой в Chrome.'); }
   if(S){ pickVoice(); S.onvoiceschanged=pickVoice; }
-  function sentences(p){ return p.match(/[^.!?]+[.!?]*/g).map(s=>s.trim()).filter(Boolean); }
+  function sentences(p){ const out=[]; (p.match(/[^.!?]+[.!?]*/g)||[p]).map(s=>s.trim()).filter(Boolean).forEach(s=>{
+      if(s.length<=110){ out.push(s); return; }
+      let cur=''; s.split(/(?<=[,:;])\s+/).forEach(part=>{ if((cur+' '+part).trim().length>110&&cur){ out.push(cur.trim()); cur=part; } else cur=(cur+' '+part).trim(); }); if(cur) out.push(cur.trim()); });
+    return out; }
   function build(el){
     const sec=el.dataset.s; let n=el.dataset.m, paras; if(sec){ const r=(window.SECMAP||{})[sec]; if(!r) return; n=r[0]; paras=(window.NARR[n]||[]).slice(r[1],r[2]+1); } else paras=(window.NARR||{})[n]; if(!paras||!paras.length) return; const label=sec?('Аудио к разделу '+sec):('Аудио-объяснение всего модуля '+n);
-    el.innerHTML='<div class="aud-row"><span class="aud-t">🎧 '+label+'</span><button class="p" type="button">▶ Слушать</button><button type="button" class="st">■</button><select aria-label="Скорость"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.2">1.2×</option><option value="1.4">1.4×</option></select></div><div class="aud-prog"><i></i></div><details><summary>Текст объяснения</summary><div class="tx">'+paras.map((p,i)=>'<p data-i="'+i+'">'+p+'</p>').join('')+'</div></details><div class="aud-msg"></div>';
+    el.innerHTML='<div class="aud-row"><span class="aud-t">🎧 '+label+'</span><button class="p" type="button">▶ Слушать</button><button type="button" class="st" title="Стоп и в начало">■</button><select aria-label="Скорость"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.2">1.2×</option><option value="1.4">1.4×</option></select></div><div class="aud-prog"><i></i></div><details><summary>Текст объяснения</summary><div class="tx">'+paras.map((p,i)=>'<p data-i="'+i+'">'+p+'</p>').join('')+'</div></details><div class="aud-msg"></div>';
     const q=[]; paras.forEach((p,i)=>sentences(p).forEach(s=>q.push([i,s])));
-    const st={el,q,pos:0,playing:false,paused:false};
-    const bp=el.querySelector('.p'), bs=el.querySelector('.st'), sel=el.querySelector('select'), bar=el.querySelector('.aud-prog i');
-    function mark(){ const i=st.q[Math.min(st.pos,st.q.length-1)][0]; el.querySelectorAll('.tx p').forEach(p=>p.classList.toggle('cur',+p.dataset.i===i&&st.playing)); bar.style.width=(st.pos/st.q.length*100)+'%'; }
-    function next(){ if(!st.playing) return; if(st.pos>=st.q.length){ stop(true); return; }
-      const u=new SpeechSynthesisUtterance(st.q[st.pos][1]); u.lang='ru-RU'; if(voice) u.voice=voice; u.rate=+sel.value;
-      st.cur=u; u.onend=()=>{ if(st.cur!==u||!st.playing||st.paused) return; st.pos++; mark(); next(); };
-      u.onerror=e=>{ if(st.cur!==u||e.error==='interrupted'||e.error==='canceled') return; st.pos++; next(); };
-      mark(); S.speak(u); }
-    function stop(done){ st.playing=false; st.paused=false; st.cur=null; S.cancel(); if(done) st.pos=0; bp.textContent='▶ Слушать'; mark(); if(active===st) active=null; }
-    bp.onclick=()=>{ if(!S){ el.querySelector('.aud-msg').textContent='Браузер не поддерживает озвучку.'; return; }
-      if(st.playing&&!st.paused){ st.paused=true; st.cur=null; S.cancel(); bp.textContent='▶ Продолжить'; return; }
-      if(active&&active!==st) active.stopFn();
-      active=st; st.playing=true; st.paused=false; bp.textContent='⏸ Пауза'; st.cur=null; S.cancel(); setTimeout(next,60); };
-    bs.onclick=()=>stop(true);
-    sel.onchange=()=>{ if(st.playing&&!st.paused){ st.cur=null; S.cancel(); setTimeout(next,60);} };
-    el.querySelectorAll('.tx p').forEach(p=>p.onclick=()=>{ st.pos=st.q.findIndex(x=>x[0]===+p.dataset.i); if(active&&active!==st) active.stopFn(); active=st; st.playing=true; st.paused=false; bp.textContent='⏸ Пауза'; st.cur=null; S.cancel(); setTimeout(next,60); });
-    st.stopFn=()=>stop(false);
+    const st={el,q,pos:0,off:0,playing:false,paused:false,cur:null,errs:0};
+    const bp=el.querySelector('.p'), bs=el.querySelector('.st'), sel=el.querySelector('select'), bar=el.querySelector('.aud-prog i'), msg=el.querySelector('.aud-msg');
+    function mark(){ const i=st.q[Math.min(st.pos,st.q.length-1)][0]; el.querySelectorAll('.tx p').forEach(p=>p.classList.toggle('cur',+p.dataset.i===i&&(st.playing||st.pos>0))); bar.style.width=(st.pos/st.q.length*100)+'%'; }
+    function speakCur(){
+      if(!st.playing||st.paused) return;
+      if(st.pos>=st.q.length){ finish(); return; }
+      const full=st.q[st.pos][1], text=full.slice(st.off);
+      const u=new SpeechSynthesisUtterance(text); u.lang='ru-RU'; if(voice) u.voice=voice; u.rate=+sel.value;
+      const base=st.off; st.cur=u;
+      u.onboundary=e=>{ if(st.cur===u&&e.name!=='sentence') st.off=base+e.charIndex; };
+      u.onstart=()=>{ if(st.cur===u) st.errs=0; };
+      u.onend=()=>{ if(st.cur!==u||!st.playing||st.paused) return; st.pos++; st.off=0; mark(); speakCur(); };
+      u.onerror=e=>{ if(st.cur!==u||e.error==='interrupted'||e.error==='canceled') return;
+        st.errs++; if(st.errs>2){ pause(); msg.style.display='block'; msg.textContent='Озвучка прервалась ('+e.error+'). Нажми «Продолжить».'; return; }
+        setTimeout(speakCur,300); };
+      mark(); S.speak(u);
+    }
+    function restart(){ st.cur=null; S.cancel(); setTimeout(speakCur,80); }
+    function play(){ if(!S){ msg.textContent='Браузер не поддерживает озвучку.'; return; }
+      if(active&&active!==st) active.stopFn(); active=st;
+      st.playing=true; st.paused=false; bp.textContent='⏸ Пауза'; restart(); }
+    function pause(){ st.paused=true; st.cur=null; S.cancel(); bp.textContent='▶ Продолжить'; mark(); }
+    function finish(){ st.playing=false; st.paused=false; st.cur=null; st.pos=0; st.off=0; bp.textContent='▶ Слушать ещё раз'; mark(); if(active===st) active=null; }
+    function stopAll(reset){ st.playing=false; st.paused=false; st.cur=null; S.cancel(); if(reset){ st.pos=0; st.off=0; bp.textContent='▶ Слушать'; } else bp.textContent=st.pos>0?'▶ Продолжить':'▶ Слушать'; mark(); if(active===st) active=null; }
+    bp.onclick=()=>{ if(st.playing&&!st.paused) pause(); else play(); };
+    bs.onclick=()=>stopAll(true);
+    sel.onchange=()=>{ if(st.playing&&!st.paused) restart(); };
+    el.querySelectorAll('.tx p').forEach(p=>p.onclick=()=>{ st.pos=st.q.findIndex(x=>x[0]===+p.dataset.i); st.off=0; play(); });
+    st.stopFn=()=>stopAll(false);
   }
   document.querySelectorAll('.aud[data-m],.aud[data-s]').forEach(build); pickVoice();
 })();
 </script>
+
 
 <style>
 #trbtn{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:50;font:600 14px/1 system-ui,sans-serif;padding:11px 14px;border-radius:999px;border:1px solid var(--line);background:var(--fg);color:var(--bg);cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18)}
