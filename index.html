@@ -1520,5 +1520,34 @@ window.SECMAP={
 })();
 </script>
 
+<style>
+#trbtn{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:50;font:600 14px/1 system-ui,sans-serif;padding:11px 14px;border-radius:999px;border:1px solid var(--line);background:var(--fg);color:var(--bg);cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+#trbtn:focus-visible{outline:3px solid var(--ink,var(--accent));outline-offset:2px}
+body{top:0!important;position:static!important}
+.skiptranslate iframe,.goog-te-banner-frame,#goog-gt-tt,.goog-te-balloon-frame,.VIpgJd-ZVi9od-ORHb-OEVmcd,.VIpgJd-ZVi9od-aZ2wEe-wOHMyf{display:none!important}
+font{background:none!important;box-shadow:none!important}
+#gte{display:none}
+</style>
+<button id="trbtn" type="button" class="notranslate" translate="no" title="Перевести страницу на русский">🌐 Русский</button>
+<div id="gte"></div>
+<script>
+(function(){
+  document.querySelectorAll('b,pre,.aud,.chips,.mnum,.sec h3 span,.n').forEach(e=>{e.classList.add('notranslate');e.setAttribute('translate','no')});
+  const btn=document.getElementById('trbtn');
+  const isRU=/googtrans=\/en\/ru/.test(document.cookie);
+  const onGH=/github\.io$/.test(location.hostname);
+  function setCookie(v){const d=location.hostname;['', '; domain='+d, '; domain=.'+d].forEach(x=>document.cookie='googtrans='+v+'; path=/'+x+(v?'':'; expires=Thu, 01 Jan 1970 00:00:00 GMT'));}
+  if(onGH){
+    btn.textContent=isRU?'🌐 English':'🌐 Русский';
+    if(isRU){ window.gtInit=function(){ new google.translate.TranslateElement({pageLanguage:'en',includedLanguages:'ru',autoDisplay:false},'gte'); };
+      const s=document.createElement('script'); s.src='https://translate.google.com/translate_a/element.js?cb=gtInit'; document.body.appendChild(s); }
+    btn.onclick=()=>{ if(isRU){ setCookie(''); } else { setCookie('/en/ru'); } location.reload(); };
+  } else {
+    const page=/cram|Cram/.test(document.title)?'cram.html':'';
+    const a=document.createElement('a'); a.id='trbtn'; a.className='notranslate'; a.textContent='🌐 Русский'; a.style.textDecoration='none';
+    a.href='https://yernazar--kbtu-github-io.translate.goog/cybersec-lectures/'+page+'?_x_tr_sl=en&_x_tr_tl=ru&_x_tr_hl=ru'; a.target='_blank'; a.rel='noopener'; a.title='Открыть русскую версию в новой вкладке'; btn.replaceWith(a);
+  }
+})();
+</script>
 </body>
 </html>
