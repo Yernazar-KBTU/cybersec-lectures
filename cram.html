@@ -312,8 +312,8 @@ window.PRON=function(t){
 (function(){
   const S=window.speechSynthesis; let voice=null, active=null;
   function pickVoice(){ if(!S) return; const v=S.getVoices().filter(x=>/^ru/i.test(x.lang));
-    let saved=null; try{saved=localStorage.getItem('ruVoice')}catch(e){} voice=v.find(x=>x.name===saved)||v.find(x=>/google/i.test(x.name))||v.find(x=>/natural|online|neural/i.test(x.name))||v.find(x=>/milena|irina|svetlana|dariya|katya/i.test(x.name))||v[0]||null;
-    document.querySelectorAll('select.vsel').forEach(s=>{ s.innerHTML=v.map(x=>'<option'+(voice&&x.name===voice.name?' selected':'')+'>'+x.name+'</option>').join('')||'<option>нет русского голоса</option>'; }); document.querySelectorAll('.aud-msg').forEach(m=>m.textContent=voice?('Голос: '+voice.name+'. Если звучит неразборчиво, выбери другой голос или скорость 0.9×.'):'Русский голос не найден на этом устройстве — установи русский голос в настройках системы или открой в Chrome.'); }
+    let saved=null; try{saved=localStorage.getItem('ruVoice')}catch(e){} const rank=x=>/natural|neural/i.test(x.name)?0:/online/i.test(x.name)?1:/premium|enhanced|улучш/i.test(x.name)?2:/google/i.test(x.name)?3:/milena|милена|irina|svetlana|dmitry|dariya|katya/i.test(x.name)?4:5; v.sort((a,b)=>rank(a)-rank(b)); voice=v.find(x=>x.name===saved)||v[0]||v.find(x=>/milena|irina|svetlana|dariya|katya/i.test(x.name))||v[0]||null;
+    document.querySelectorAll('select.vsel').forEach(s=>{ s.innerHTML=v.map(x=>'<option'+(voice&&x.name===voice.name?' selected':'')+'>'+x.name+'</option>').join('')||'<option>нет русского голоса</option>'; }); document.querySelectorAll('.aud-msg').forEach(m=>m.textContent=voice?('Голос: '+voice.name+(/natural|neural/i.test(voice.name)?' — нейросетевой, лучшее качество.':'. Самый чистый нейросетевой голос (Svetlana/Dmitry Natural) есть в браузере Microsoft Edge — открой сайт в нём.')):'Русский голос не найден на этом устройстве — установи русский голос в настройках системы или открой в Chrome.'); }
   if(S){ pickVoice(); S.onvoiceschanged=pickVoice; }
   document.addEventListener('change',e=>{ if(!e.target.classList||!e.target.classList.contains('vsel')) return; try{localStorage.setItem('ruVoice',e.target.value)}catch(x){} pickVoice(); });
   function sentences(p){ const out=[]; (p.match(/[^.!?]+[.!?]*/g)||[p]).map(s=>s.trim()).filter(Boolean).forEach(s=>{
@@ -322,7 +322,7 @@ window.PRON=function(t){
     return out; }
   function build(el){
     const sec=el.dataset.s; let n=el.dataset.m, paras; const N2=window.N2||{}; if(sec){ paras=N2[sec]; } else { paras=[]; Object.keys(N2).filter(k=>k.split('.')[0]===String(n)).sort((a,b)=>+a.split('.')[1]-+b.split('.')[1]).forEach(k=>N2[k].forEach(x=>paras.push(x))); } if(!paras||!paras.length) return; const label=sec?('Аудио к разделу '+sec):('Аудио-объяснение всего модуля '+n);
-    el.innerHTML='<div class="aud-row"><span class="aud-t">🎧 '+label+'</span><button class="p" type="button">▶ Слушать</button><button type="button" class="st" title="Стоп и в начало">■</button><select aria-label="Скорость"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.2">1.2×</option><option value="1.4">1.4×</option></select>'+(sec?'':'<select class="vsel" aria-label="Голос" title="Голос"></select>')+'</div><div class="aud-prog"><i></i></div><details><summary>Текст объяснения</summary><div class="tx">'+paras.map((p,i)=>'<p data-i="'+i+'">'+p+'</p>').join('')+'</div></details><div class="aud-msg"></div>';
+    el.innerHTML='<div class="aud-row"><span class="aud-t">🎧 '+label+'</span><button class="p" type="button">▶ Слушать</button><button type="button" class="st" title="Стоп и в начало">■</button><select aria-label="Скорость"><option value="0.85">0.85×</option><option value="0.95" selected>0.95×</option><option value="1.05">1.05×</option><option value="1.2">1.2×</option><option value="1.4">1.4×</option></select>'+(sec?'':'<select class="vsel" aria-label="Голос" title="Голос"></select>')+'</div><div class="aud-prog"><i></i></div><details><summary>Текст объяснения</summary><div class="tx">'+paras.map((p,i)=>'<p data-i="'+i+'">'+p+'</p>').join('')+'</div></details><div class="aud-msg"></div>';
     const q=[]; paras.forEach((p,i)=>sentences(p).forEach(s=>q.push([i,s])));
     const st={el,q,pos:0,off:0,playing:false,paused:false,cur:null,errs:0};
     const bp=el.querySelector('.p'), bs=el.querySelector('.st'), sel=el.querySelector('select'), bar=el.querySelector('.aud-prog i'), msg=el.querySelector('.aud-msg');
@@ -331,11 +331,11 @@ window.PRON=function(t){
       if(!st.playing||st.paused) return;
       if(st.pos>=st.q.length){ finish(); return; }
       const full=st.q[st.pos][1], text=full.slice(st.off);
-      const u=new SpeechSynthesisUtterance(window.PRON?window.PRON(text):text); u.lang='ru-RU'; if(voice) u.voice=voice; u.rate=+sel.value;
+      const u=new SpeechSynthesisUtterance(window.PRON?window.PRON(text):text); u.lang='ru-RU'; if(voice) u.voice=voice; u.rate=+sel.value; u.pitch=1; u.volume=1;
       const base=st.off; st.cur=u;
       u.onboundary=e=>{ if(st.cur===u&&e.name!=='sentence') st.off=base+e.charIndex; };
       u.onstart=()=>{ if(st.cur===u) st.errs=0; };
-      u.onend=()=>{ if(st.cur!==u||!st.playing||st.paused) return; st.pos++; st.off=0; mark(); speakCur(); };
+      u.onend=()=>{ if(st.cur!==u||!st.playing||st.paused) return; const pi=st.q[st.pos][0]; st.pos++; st.off=0; mark(); const gap=(st.pos<st.q.length&&st.q[st.pos][0]!==pi)?550:(/[.!?]$/.test(full)?220:90); setTimeout(()=>{ if(st.cur===u&&st.playing&&!st.paused) speakCur(); },gap); };
       u.onerror=e=>{ if(st.cur!==u||e.error==='interrupted'||e.error==='canceled') return;
         st.errs++; if(st.errs>2){ pause(); msg.style.display='block'; msg.textContent='Озвучка прервалась ('+e.error+'). Нажми «Продолжить».'; return; }
         setTimeout(speakCur,300); };
@@ -357,6 +357,7 @@ window.PRON=function(t){
   document.querySelectorAll('.aud[data-m],.aud[data-s]').forEach(build); pickVoice();
 })();
 </script>
+
 
 
 
