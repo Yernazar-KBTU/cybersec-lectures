@@ -1399,7 +1399,8 @@ window.NARR = {
 "Укрепление сервера: минимум пакетов, отключение лишних служб, SSH с запретом входа под root, обновления, отключение автоопределения USB и сильные пароли. Логи: var log messages, общие сообщения; auth.log, аутентификация в Debian; secure, аутентификация в Red Hat; dmesg, ядро и оборудование; cron, задачи по расписанию.",
 "Файловые системы: ext2 без журнала, лучше для флешек; ext3 с журналом, максимальный файл тридцать два терабайта; ext4, наследник ext3. Swap используется, когда кончается память. Монтирование, это привязка раздела к каталогу, корень обозначается слешем.",
 "Права: владелец, группа и остальные, чтение, запись и выполнение. Восьмеричные значения: четыре чтение, два запись, один выполнение, семь все права. Только root может обойти права. Жёсткая ссылка указывает на тот же inode и переживает удаление оригинала. Символическая ссылка ломается при удалении оригинала, но может указывать на каталоги и другие файловые системы.",
-"X Window, основа графики, внешний вид задают оконные менеджеры Gnome и KDE. Менеджеры пакетов: pacman в Arch, dpkg и apt в Debian. Fork, единственный способ создать процесс в Linux, получаются родитель и потомок. Rootkit меняет ядро, обнаруживают его загрузкой с доверенного носителя, а удаляют обычно переустановкой системы, утилита chkrootkit помогает, но не на сто процентов. Pipe, вертикальная черта, передаёт вывод одной команды на вход другой."
+"X Window, основа графики, внешний вид задают оконные менеджеры Gnome и KDE.",
+"Менеджеры пакетов: pacman в Arch, dpkg и apt в Debian. Fork, единственный способ создать процесс в Linux, получаются родитель и потомок. Rootkit меняет ядро, обнаруживают его загрузкой с доверенного носителя, а удаляют обычно переустановкой системы, утилита chkrootkit помогает, но не на сто процентов. Pipe, вертикальная черта, передаёт вывод одной команды на вход другой."
 ],
 9: [
 "Модуль девятый. Защита систем и конечных точек. Укрепление ОС: удалить лишнее, ставить патчи, иметь базовую линию baseline. Остерегайся поддельных антивирусов. Fileless malware живёт в памяти, использует PowerShell и исчезает после перезагрузки.",
@@ -1453,6 +1454,21 @@ window.NARR = {
 ]
 };
 
+window.SECMAP={
+"1.1":[1,0,5],"1.2":[1,6,7],"1.3":[1,8,10],"1.4":[1,11,11],"1.5":[1,12,13],
+"2.1":[2,0,2],"2.2":[2,3,6],
+"3.1":[3,0,2],"3.2":[3,3,4],"3.3":[3,5,6],
+"4.1":[4,0,3],"4.2":[4,4,5],"4.3":[4,6,6],
+"5.1":[5,0,2],"5.2":[5,3,3],"5.3":[5,4,6],
+"6.1":[6,0,4],"6.2":[6,5,7],
+"7.1":[7,0,1],"7.2":[7,2,6],"7.3":[7,7,7],"7.4":[7,8,8],
+"8.1":[8,0,1],"8.2":[8,2,2],"8.3":[8,3,3],"8.4":[8,4,4],"8.5":[8,5,6],"8.6":[8,7,7],"8.7":[8,8,8],
+"9.1":[9,0,4],"9.2":[9,5,5],"9.3":[9,6,6],"9.4":[9,7,7],
+"10.1":[10,0,2],"10.2":[10,3,4],"10.3":[10,5,5],
+"11.1":[11,0,3],"11.2":[11,4,4],"11.3":[11,5,5],
+"12.1":[12,0,1],"12.2":[12,2,3],"12.3":[12,4,4],"12.4":[12,5,5],"12.5":[12,6,7],"12.6":[12,8,9],"12.7":[12,10,10],
+"13.1":[13,0,1],"13.2":[13,2,4],"13.3":[13,5,7],"13.4":[13,8,8]};
+
 </script>
 <style>
 .aud{--a:var(--ink,var(--accent));background:var(--card,var(--surface));border:1px solid var(--line);border-left:4px solid var(--a);border-radius:8px;padding:10px 12px;margin:10px 0 14px;max-width:76ch}
@@ -1467,6 +1483,7 @@ window.NARR = {
 .aud summary{cursor:pointer;color:var(--muted)}
 .aud .tx p{margin:6px 0;padding:4px 6px;border-radius:4px;line-height:1.5}
 .aud .tx p.cur{background:var(--ink-soft,var(--accent-soft))}
+.aud.sm{padding:7px 10px;margin:4px 0 10px;border-left-width:3px}.aud.sm .aud-t{font-size:13px;font-weight:600}.aud.sm button,.aud.sm select{padding:3px 8px;font-size:13px}.aud.sm .aud-msg{display:none}
 .aud-msg{font-size:13px;color:var(--muted);margin-top:6px}
 </style>
 <script>
@@ -1478,8 +1495,8 @@ window.NARR = {
   if(S){ pickVoice(); S.onvoiceschanged=pickVoice; }
   function sentences(p){ return p.match(/[^.!?]+[.!?]*/g).map(s=>s.trim()).filter(Boolean); }
   function build(el){
-    const n=el.dataset.m, paras=(window.NARR||{})[n]; if(!paras) return;
-    el.innerHTML='<div class="aud-row"><span class="aud-t">🎧 Аудио-объяснение модуля '+n+'</span><button class="p" type="button">▶ Слушать</button><button type="button" class="st">■</button><select aria-label="Скорость"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.2">1.2×</option><option value="1.4">1.4×</option></select></div><div class="aud-prog"><i></i></div><details><summary>Текст объяснения</summary><div class="tx">'+paras.map((p,i)=>'<p data-i="'+i+'">'+p+'</p>').join('')+'</div></details><div class="aud-msg"></div>';
+    const sec=el.dataset.s; let n=el.dataset.m, paras; if(sec){ const r=(window.SECMAP||{})[sec]; if(!r) return; n=r[0]; paras=(window.NARR[n]||[]).slice(r[1],r[2]+1); } else paras=(window.NARR||{})[n]; if(!paras||!paras.length) return; const label=sec?('Аудио к разделу '+sec):('Аудио-объяснение всего модуля '+n);
+    el.innerHTML='<div class="aud-row"><span class="aud-t">🎧 '+label+'</span><button class="p" type="button">▶ Слушать</button><button type="button" class="st">■</button><select aria-label="Скорость"><option value="0.9">0.9×</option><option value="1" selected>1×</option><option value="1.2">1.2×</option><option value="1.4">1.4×</option></select></div><div class="aud-prog"><i></i></div><details><summary>Текст объяснения</summary><div class="tx">'+paras.map((p,i)=>'<p data-i="'+i+'">'+p+'</p>').join('')+'</div></details><div class="aud-msg"></div>';
     const q=[]; paras.forEach((p,i)=>sentences(p).forEach(s=>q.push([i,s])));
     const st={el,q,pos:0,playing:false,paused:false};
     const bp=el.querySelector('.p'), bs=el.querySelector('.st'), sel=el.querySelector('select'), bar=el.querySelector('.aud-prog i');
@@ -1499,8 +1516,9 @@ window.NARR = {
     el.querySelectorAll('.tx p').forEach(p=>p.onclick=()=>{ st.pos=st.q.findIndex(x=>x[0]===+p.dataset.i); if(active&&active!==st) active.stopFn(); active=st; st.playing=true; st.paused=false; bp.textContent='⏸ Пауза'; st.cur=null; S.cancel(); setTimeout(next,60); });
     st.stopFn=()=>stop(false);
   }
-  document.querySelectorAll('.aud[data-m]').forEach(build); pickVoice();
+  document.querySelectorAll('.aud[data-m],.aud[data-s]').forEach(build); pickVoice();
 })();
 </script>
+
 </body>
 </html>
